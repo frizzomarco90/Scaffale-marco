@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scaffale</title>
+<meta name="description" content="La tua libreria di tool HTML, sempre disponibile offline">
+<meta name="theme-color" content="#1e3b2c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* Layout: scaffale a griglia come la schermata Home del telefono; barra in alto, pulsante + in basso a destra, i tool si aprono a tutto schermo */
+:root{
+  --bg:#eef1ec; --surface:#ffffff; --fg:#1b241e; --muted:#5f6b63; --line:#d7ddd6;
+  --accent:#1e5b3f; --accent-fg:#ffffff; --danger:#a5352b; --danger-soft:#f7e2df; --shelf:#c9b48f;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121713; --surface:#1b221d; --fg:#e4eae5; --muted:#99a69d; --line:#2c352f;
+  --accent:#7cc39b; --accent-fg:#0f1a13; --danger:#ef8b80; --danger-soft:#3b2120; --shelf:#6b5a3c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121713; --surface:#1b221d; --fg:#e4eae5; --muted:#99a69d; --line:#2c352f;
+  --accent:#7cc39b; --accent-fg:#0f1a13; --danger:#ef8b80; --danger-soft:#3b2120; --shelf:#6b5a3c; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font);-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:calc(env(safe-area-inset-top,0px) + 12px);padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:10px}
+.brand{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;flex:1}
+.brand small{display:block;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-weight:600;font-size:.85rem}
+.search{margin-top:10px;width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px calc(110px + env(safe-area-inset-bottom,0px))}
+.cat{margin-top:18px}
+.cat h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 10px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:16px 10px;padding-bottom:12px;border-bottom:4px solid var(--shelf);border-radius:0 0 2px 2px}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.tile-open{border:none;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.ico{width:62px;height:62px;border-radius:16px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.2rem;letter-spacing:-.02em;box-shadow:0 2px 6px rgba(0,0,0,.15);text-shadow:0 1px 1px rgba(0,0,0,.2)}
+.tname{font-size:.78rem;text-align:center;line-height:1.2;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.more{position:absolute;top:-6px;right:calc(50% - 40px);width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:.8rem;line-height:1;display:grid;place-items:center;padding:0}
+.fab{position:fixed;right:calc(max(16px,env(safe-area-inset-right,0px)) + 4px);bottom:calc(env(safe-area-inset-bottom,0px) + 20px);z-index:6;background:var(--accent);color:var(--accent-fg);border:none;border-radius:18px;padding:16px 20px;font-weight:700;font-size:1rem;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.empty{max-width:520px;margin:28px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.empty h2{margin:0 0 8px;font-size:1.1rem}
+.empty ol{margin:8px 0 0;padding-left:20px}
+.empty li{margin:6px 0}
+.muted{color:var(--muted)}
+/* viewer */
+.viewer{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
+.vbar{display:flex;align-items:center;gap:8px;padding-top:calc(env(safe-area-inset-top,0px) + 6px);padding-bottom:6px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.vbar b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
+.vbar button{border:none;background:none;padding:6px 10px;font-weight:700;font-size:.9rem;color:var(--accent)}
+.viewer iframe{flex:1;border:0;width:100%;background:#fff}
+/* sheet */
+.scrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px max(18px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));max-height:90vh;overflow:auto}
+.sheet h3{margin:0 0 12px;font-size:1.1rem}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.field input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.colors{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:32px;height:32px;border-radius:50%;border:3px solid transparent;padding:0}
+.sw[aria-pressed="true"]{border-color:var(--fg)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:10px;padding:10px 14px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+.btn.danger.solid{background:var(--danger);color:var(--bg)}
+.hint{font-size:.82rem;color:var(--muted);margin:4px 0 0}
+.confirmbox{background:var(--danger-soft);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:.9rem}
+.menu-list{display:flex;flex-direction:column;gap:8px}
+.menu-list button{text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px 14px}
+.menu-list button span{display:block;font-size:.8rem;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);z-index:40;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <div class="brand">Scaffale<small id="count">I tuoi tool, anche offline</small></div>
+    <button class="iconbtn" id="menuBtn">Menu</button>
+  </div>
+  <input class="search" id="q" type="search" placeholder="Cerca un tool…" aria-label="Cerca un tool">
+</header>
+
+<main id="main"></main>
+
+<button class="fab" id="addBtn">+ Aggiungi</button>
+<input type="file" id="fileIn" accept=".html,.htm,text/html" multiple hidden>
+<input type="file" id="replaceIn" accept=".html,.htm,text/html" hidden>
+<input type="file" id="importIn" accept=".json,application/json" hidden>
+
+<div class="viewer" id="viewer" hidden>
+  <div class="vbar"><button id="closeBtn" aria-label="Torna allo scaffale">‹ Scaffale</button><b id="vTitle"></b><button id="reloadBtn">Ricarica</button></div>
+  <iframe id="frame" title="Tool" allow="clipboard-write; fullscreen"></iframe>
+</div>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const COLORS=["#2f6b3a","#1f5f8b","#8a3b8f","#b5482f","#c78a12","#2e8b84","#5a4fb0","#7a5a3a","#a3304f","#4a6b2f"];
+const DB_NAME="scaffale", NS="scaffale:";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- database ---------- */
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,1);
+  r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains("apps"))d.createObjectStore("apps",{keyPath:"id"});if(!d.objectStoreNames.contains("inbox"))d.createObjectStore("inbox",{autoIncrement:true})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+let db;
+function tx(store,mode,fn){return new Promise((res,rej)=>{const t=db.transaction(store,mode);const s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>out=r.result;t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
+const allApps=()=>tx("apps","readonly",s=>s.getAll());
+const putApp=a=>tx("apps","readwrite",s=>s.put(a));
+const delApp=id=>tx("apps","readwrite",s=>s.delete(id));
+
+let apps=[];
+async function refresh(){apps=await allApps();render()}
+
+/* ---------- helpers ---------- */
+function titleOf(html,file){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);const t=m&&m[1].replace(/\s+/g," ").trim();return t||file.replace(/\.html?$/i,"").replace(/[-_]+/g," ")}
+function initials(n){const STOP=["di","del","della","dei","in","e","la","il","lo","le","i","per","con","da","a","the","of"];let w=n.split(/\s+/).filter(x=>/[\p{L}\p{N}]/u.test(x));const f=w.filter(x=>!STOP.includes(x.toLowerCase()));if(f.length)w=f;return ((w[0]||"?")[0]+(w[1]?w[1][0]:(w[0]||"")[1]||"")).toUpperCase()}
+function colorFor(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return COLORS[h%COLORS.length]}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+/* ---------- import ---------- */
+async function addFiles(files){
+  let added=0,updated=0;
+  for(const f of files){
+    if(!/\.html?$/i.test(f.name)&&f.type!=="text/html")continue;
+    const html=await f.text();
+    const same=apps.find(a=>a.file===f.name);
+    if(same){same.html=html;same.updated=Date.now();await putApp(same);updated++}
+    else{const name=titleOf(html,f.name);const a={id:uid(),file:f.name,name,cat:"",color:colorFor(name),html,added:Date.now(),updated:Date.now(),opened:0};await putApp(a);apps.push(a);added++}
+  }
+  await refresh();
+  const parts=[];if(added)parts.push(added===1?"1 tool aggiunto":added+" tool aggiunti");if(updated)parts.push(updated===1?"1 aggiornato (dati conservati)":updated+" aggiornati (dati conservati)");
+  toast(parts.length?parts.join(", "):"Nessun file HTML trovato");
+}
+$("#addBtn").onclick=()=>$("#fileIn").click();
+$("#fileIn").onchange=e=>{addFiles([...e.target.files]);e.target.value=""};
+
+async function drainInbox(){
+  const items=await tx("inbox","readonly",s=>s.getAll());
+  if(!items||!items.length)return;
+  await tx("inbox","readwrite",s=>s.clear());
+  const files=items.map(i=>new File([i.html],i.name||"tool.html",{type:"text/html"}));
+  await addFiles(files);
+}
+
+/* ---------- render ---------- */
+$("#q").oninput=render;
+function render(){
+  $("#count").textContent=apps.length?(apps.length===1?"1 tool":apps.length+" tool")+" · disponibili offline":"I tuoi tool, anche offline";
+  const q=$("#q").value.trim().toLowerCase();
+  const list=apps.filter(a=>!q||a.name.toLowerCase().includes(q)||(a.cat||"").toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"it"));
+  if(!apps.length){$("#main").innerHTML=emptyHTML();return}
+  if(!list.length){$("#main").innerHTML=`<p class="muted" style="margin-top:24px">Nessun tool corrisponde a "${esc(q)}".</p>`;return}
+  const groups={};list.forEach(a=>{const c=a.cat||"Senza categoria";(groups[c]=groups[c]||[]).push(a)});
+  const names=Object.keys(groups).sort((a,b)=>a==="Senza categoria"?1:b==="Senza categoria"?-1:a.localeCompare(b,"it"));
+  $("#main").innerHTML=names.map(c=>`<section class="cat"><h2>${esc(c)}</h2><div class="grid">${groups[c].map(a=>`
+    <div class="tile"><button class="tile-open" data-open="${a.id}"><span class="ico" style="background:${a.color}">${esc(initials(a.name))}</span><span class="tname">${esc(a.name)}</span></button>
+    <button class="more" data-edit="${a.id}" aria-label="Modifica ${esc(a.name)}">⋯</button></div>`).join("")}</div></section>`).join("");
+}
+function emptyHTML(){return `<div class="empty"><h2>Lo scaffale è vuoto</h2>
+  <p class="muted" style="margin:0">Aggiungi i file HTML dei tuoi tool. Restano salvati qui dentro e funzionano anche senza internet.</p>
+  <ol><li>Tocca <b>+ Aggiungi</b> e scegli uno o più file .html dalla cartella Download.</li>
+  <li>Oppure, dal file manager, tieni premuto un file .html → <b>Condividi</b> → <b>Scaffale</b>.</li>
+  <li>Per aggiornare un tool, ricarica un file con lo stesso nome: i suoi dati restano.</li></ol></div>`}
+
+/* ---------- viewer ---------- */
+const SHIM=id=>`<script>(function(){var P=${JSON.stringify(NS)}+${JSON.stringify(id)}+":";var ls;try{ls=window.localStorage}catch(e){return}
+function k(){var r=[];for(var i=0;i<ls.length;i++){var x=ls.key(i);if(x&&x.indexOf(P)===0)r.push(x.slice(P.length))}return r}
+var s={getItem:function(x){return ls.getItem(P+x)},setItem:function(x,v){ls.setItem(P+x,String(v))},removeItem:function(x){ls.removeItem(P+x)},
+clear:function(){k().forEach(function(x){ls.removeItem(P+x)})},key:function(i){var a=k();return i<a.length?a[i]:null},get length(){return k().length}};
+try{Object.defineProperty(window,"localStorage",{value:s,configurable:true})}catch(e){}})();<\/script>`;
+function prepare(a){
+  let h=a.html;const shim=SHIM(a.id);
+  const head='<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">';
+  if(/<head[^>]*>/i.test(h))h=h.replace(/<head[^>]*>/i,m=>m+shim);
+  else if(/<html[^>]*>/i.test(h))h=h.replace(/<html[^>]*>/i,m=>m+"<head>"+head+shim+"</head>");
+  else h=head+shim+h;
+  if(!/^\s*<!doctype/i.test(h))h="<!doctype html>"+h;
+  return h;
+}
+let current=null;
+function openApp(id){
+  const a=apps.find(x=>x.id===id);if(!a)return;
+  current=a;$("#vTitle").textContent=a.name;$("#frame").srcdoc=prepare(a);$("#viewer").hidden=false;
+  a.opened=Date.now();putApp(a);
+  history.pushState({tool:id},"");
+}
+function closeApp(){$("#viewer").hidden=true;$("#frame").srcdoc="";current=null}
+$("#closeBtn").onclick=()=>history.back();
+$("#reloadBtn").onclick=()=>{if(current)$("#frame").srcdoc=prepare(current)};
+window.addEventListener("popstate",()=>{if(!$("#viewer").hidden)closeApp();if(!$("#scrim").hidden)closeSheet()});
+
+$("#main").addEventListener("click",e=>{
+  const o=e.target.closest("[data-open]");if(o)return openApp(o.dataset.open);
+  const ed=e.target.closest("[data-edit]");if(ed)return editSheet(ed.dataset.edit);
+});
+
+/* ---------- sheets ---------- */
+function openSheet(html){$("#sheet").innerHTML=html;$("#scrim").hidden=false;history.pushState({sheet:1},"")}
+function closeSheet(){$("#scrim").hidden=true;$("#sheet").innerHTML=""}
+function dismiss(){if(!$("#scrim").hidden)history.back()}
+$("#scrim").addEventListener("click",e=>{if(e.target.id==="scrim")dismiss()});
+
+let editing=null;
+function editSheet(id){
+  const a=apps.find(x=>x.id===id);if(!a)return;editing=a;
+  const cats=[...new Set(apps.map(x=>x.cat).filter(Boolean))].sort();
+  openSheet(`<h3>Modifica tool</h3>
+   <div class="field"><label for="eName">Nome</label><input id="eName" value="${esc(a.name)}"></div>
+   <div class="field"><label for="eCat">Categoria</label><input id="eCat" list="catList" value="${esc(a.cat)}" placeholder="Es. Casa, Lavoro, Orto"><datalist id="catList">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+   <div class="field"><label>Colore</label><div class="colors">${COLORS.map(c=>`<button class="sw" style="background:${c}" data-color="${c}" aria-pressed="${c===a.color}" aria-label="Colore"></button>`).join("")}</div></div>
+   <p class="hint">File: ${esc(a.file)}</p>
+   <div class="actions"><button class="btn" id="eSave">Salva</button><button class="btn ghost" id="eReplace">Sostituisci file</button></div>
+   <p class="hint">"Sostituisci file" carica una nuova versione del tool e conserva i suoi dati.</p>
+   <div class="actions"><button class="btn danger" id="eClear">Cancella i dati del tool</button><button class="btn danger" id="eDel">Elimina tool</button></div>
+   <div id="eConfirm"></div>`);
+}
+$("#sheet").addEventListener("click",async e=>{
+  const t=e.target;
+  if(t.dataset.color){$("#sheet").querySelectorAll(".sw").forEach(s=>s.setAttribute("aria-pressed",s===t));return}
+  if(t.id==="eSave"){const a=editing;a.name=$("#eName").value.trim()||a.name;a.cat=$("#eCat").value.trim();const p=$("#sheet .sw[aria-pressed='true']");if(p)a.color=p.dataset.color;await putApp(a);await refresh();dismiss();toast("Salvato")}
+  else if(t.id==="eReplace"){$("#replaceIn").click()}
+  else if(t.id==="eDel"){$("#eConfirm").innerHTML=`<div class="confirmbox">Eliminare "${esc(editing.name)}" e i suoi dati? <div class="actions"><button class="btn danger solid" id="eDelYes">Sì, elimina</button><button class="btn ghost" id="eNo">Annulla</button></div></div>`}
+  else if(t.id==="eClear"){$("#eConfirm").innerHTML=`<div class="confirmbox">Cancellare i dati salvati da "${esc(editing.name)}"? Il tool resta sullo scaffale. <div class="actions"><button class="btn danger solid" id="eClearYes">Sì, cancella</button><button class="btn ghost" id="eNo">Annulla</button></div></div>`}
+  else if(t.id==="eNo"){$("#eConfirm").innerHTML=""}
+  else if(t.id==="eDelYes"){clearData(editing.id);await delApp(editing.id);await refresh();dismiss();toast("Tool eliminato")}
+  else if(t.id==="eClearYes"){clearData(editing.id);$("#eConfirm").innerHTML="";toast("Dati cancellati")}
+  else if(t.dataset.act){menuAction(t.closest("[data-act]").dataset.act)}
+  else if(t.closest("[data-act]")){menuAction(t.closest("[data-act]").dataset.act)}
+});
+$("#replaceIn").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f||!editing)return;
+  editing.html=await f.text();editing.file=f.name;editing.updated=Date.now();await putApp(editing);await refresh();dismiss();toast("Tool aggiornato, dati conservati");
+};
+function clearData(id){try{const p=NS+id+":";const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(p))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k))}catch(e){}}
+
+/* ---------- menu & backup ---------- */
+$("#menuBtn").onclick=()=>openSheet(`<h3>Menu</h3><div class="menu-list">
+  <button data-act="export">Esporta backup<span>Salva tutti i tool e i loro dati in un unico file</span></button>
+  <button data-act="import">Importa backup<span>Ripristina da un file di backup (unisce, non cancella)</span></button>
+  <button data-act="help">Come si usa<span>Aggiungere, aggiornare e organizzare i tool</span></button></div>`);
+function menuAction(act){
+  if(act==="export")exportBackup();
+  else if(act==="import")$("#importIn").click();
+  else if(act==="help"){$("#sheet").innerHTML=`<h3>Come si usa</h3>
+   <p><b>Aggiungere:</b> tocca + Aggiungi e scegli i file .html. Puoi selezionarne più di uno insieme. In alternativa condividi un file .html da file manager, WhatsApp o email verso Scaffale.</p>
+   <p><b>Aggiornare:</b> se ricarichi un file con lo stesso nome, il tool viene sostituito e i suoi dati restano. Per un nome diverso usa ⋯ → Sostituisci file.</p>
+   <p><b>Organizzare:</b> con ⋯ cambi nome, categoria e colore.</p>
+   <p><b>Dati:</b> ogni tool ha i suoi dati separati, salvati solo su questo telefono. Fai ogni tanto Esporta backup e copia il file sul disco esterno.</p>
+   <p class="hint">Carica solo file di cui ti fidi: i tool girano dentro l'app.</p>
+   <div class="actions"><button class="btn" id="hClose">Chiudi</button></div>`;
+   $("#hClose").onclick=dismiss}
+}
+function exportBackup(){
+  const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(NS))data[k]=localStorage.getItem(k)}}catch(e){}
+  const blob=new Blob([JSON.stringify({app:"scaffale",v:1,date:new Date().toISOString(),apps,data})],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="scaffale-backup-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);dismiss();toast("Backup salvato nei Download");
+}
+$("#importIn").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  let b;try{b=JSON.parse(await f.text())}catch(err){toast("Il file scelto non è un backup di Scaffale");return}
+  if(!b||b.app!=="scaffale"||!Array.isArray(b.apps)){toast("Il file scelto non è un backup di Scaffale");return}
+  for(const a of b.apps)await putApp(a);
+  try{Object.entries(b.data||{}).forEach(([k,v])=>localStorage.setItem(k,v))}catch(err){}
+  await refresh();dismiss();toast(b.apps.length+" tool ripristinati");
+};
+
+/* ---------- start ---------- */
+(async()=>{
+  try{db=await openDB()}catch(e){$("#main").innerHTML=`<div class="empty"><h2>Archivio non disponibile</h2><p class="muted">Il browser non permette di salvare dati (forse sei in navigazione in incognito). Apri Scaffale in una scheda normale o dall'app installata.</p></div>`;return}
+  await refresh();
+  await drainInbox();
+  if(new URLSearchParams(location.search).has("condiviso"))history.replaceState(null,"",location.pathname);
+  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+})();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
