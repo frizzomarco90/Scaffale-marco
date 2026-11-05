@@ -92,8 +92,8 @@ main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px
 <main id="main"></main>
 
 <button class="fab" id="addBtn">+ Aggiungi</button>
-<input type="file" id="fileIn" accept=".html,.htm,text/html" multiple hidden>
-<input type="file" id="replaceIn" accept=".html,.htm,text/html" hidden>
+<input type="file" id="fileIn" multiple hidden>
+<input type="file" id="replaceIn" hidden>
 <input type="file" id="importIn" accept=".json,application/json" hidden>
 
 <div class="viewer" id="viewer" hidden>
@@ -128,14 +128,17 @@ function titleOf(html,file){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/
 function initials(n){const STOP=["di","del","della","dei","in","e","la","il","lo","le","i","per","con","da","a","the","of"];let w=n.split(/\s+/).filter(x=>/[\p{L}\p{N}]/u.test(x));const f=w.filter(x=>!STOP.includes(x.toLowerCase()));if(f.length)w=f;return ((w[0]||"?")[0]+(w[1]?w[1][0]:(w[0]||"")[1]||"")).toUpperCase()}
 function colorFor(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return COLORS[h%COLORS.length]}
 function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+function isHTML(html,f){if(/\.html?$/i.test(f.name||"")||f.type==="text/html")return true;return /<(!doctype\s+html|html[\s>]|head[\s>]|body[\s>])/i.test(html.slice(0,4000))}
+function cleanName(n){n=String(n||"tool").replace(/\.(txt|bin|htm)$/i,m=>m.toLowerCase()===".htm"?".html":"").replace(/\s*\(\d+\)(?=\.|$)/,"");if(!/\.html?$/i.test(n))n+=".html";return n}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 
 /* ---------- import ---------- */
 async function addFiles(files){
   let added=0,updated=0;
-  for(const f of files){
-    if(!/\.html?$/i.test(f.name)&&f.type!=="text/html")continue;
-    const html=await f.text();
+  for(let f of files){
+    let html=await f.text();html=html.replace(/^\uFEFF/,"");
+    if(!isHTML(html,f))continue;
+    f={name:cleanName(f.name),type:f.type};
     const same=apps.find(a=>a.file===f.name);
     if(same){same.html=html;same.updated=Date.now();await putApp(same);updated++}
     else{const name=titleOf(html,f.name);const a={id:uid(),file:f.name,name,cat:"",color:colorFor(name),html,added:Date.now(),updated:Date.now(),opened:0};await putApp(a);apps.push(a);added++}
@@ -180,7 +183,10 @@ const SHIM=id=>`<script>(function(){var P=${JSON.stringify(NS)}+${JSON.stringify
 function k(){var r=[];for(var i=0;i<ls.length;i++){var x=ls.key(i);if(x&&x.indexOf(P)===0)r.push(x.slice(P.length))}return r}
 var s={getItem:function(x){return ls.getItem(P+x)},setItem:function(x,v){ls.setItem(P+x,String(v))},removeItem:function(x){ls.removeItem(P+x)},
 clear:function(){k().forEach(function(x){ls.removeItem(P+x)})},key:function(i){var a=k();return i<a.length?a[i]:null},get length(){return k().length}};
-try{Object.defineProperty(window,"localStorage",{value:s,configurable:true})}catch(e){}})();<\/script>`;
+try{Object.defineProperty(window,"localStorage",{value:s,configurable:true})}catch(e){}
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href^='#']");if(!a||e.defaultPrevented)return;e.preventDefault();var id=decodeURIComponent(a.getAttribute("href").slice(1));var t=id?document.getElementById(id)||document.getElementsByName(id)[0]:null;
+try{history.replaceState(null,"","#"+id)}catch(x){}if(t){if(t.tagName==="DETAILS")t.open=true;t.scrollIntoView({behavior:"smooth",block:"start"})}else if(!id)window.scrollTo(0,0);
+try{window.dispatchEvent(new HashChangeEvent("hashchange"))}catch(x){}});})();<\/script>`;
 function prepare(a){
   let h=a.html;const shim=SHIM(a.id);
   const head='<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">';
@@ -242,7 +248,8 @@ $("#sheet").addEventListener("click",async e=>{
 });
 $("#replaceIn").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f||!editing)return;
-  editing.html=await f.text();editing.file=f.name;editing.updated=Date.now();await putApp(editing);await refresh();dismiss();toast("Tool aggiornato, dati conservati");
+  const h=(await f.text()).replace(/^\uFEFF/,"");if(!isHTML(h,f)){toast("Il file scelto non sembra un HTML");return}
+  editing.html=h;editing.file=cleanName(f.name);editing.updated=Date.now();await putApp(editing);await refresh();dismiss();toast("Tool aggiornato, dati conservati");
 };
 function clearData(id){try{const p=NS+id+":";const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(p))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k))}catch(e){}}
 

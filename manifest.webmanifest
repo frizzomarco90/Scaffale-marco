@@ -18,7 +18,7 @@
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
-      "files": [{"name": "file", "accept": ["text/html", ".html", ".htm"]}]
+      "files": [{"name": "file", "accept": ["text/html", ".html", ".htm", "text/plain", "application/octet-stream", "*/*"]}]
     }
   }
 }
